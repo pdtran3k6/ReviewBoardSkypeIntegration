@@ -4,8 +4,7 @@ from django.utils.translation import ugettext_lazy as _
 from reviewboard.extensions.base import Extension
 from reviewboard.extensions.hooks import IntegrationHook
 
-from rbintegrations.slack.integration import SlackIntegration
-
+from rbintegrations.skype.integration import SkypeIntegration
 
 class RBIntegrationsExtension(Extension):
     """Extends Review Board with support for many common integrations."""
@@ -17,7 +16,7 @@ class RBIntegrationsExtension(Extension):
     }
 
     integrations = [
-        SlackIntegration,
+        SkypeIntegration,
     ]
 
     def initialize(self):

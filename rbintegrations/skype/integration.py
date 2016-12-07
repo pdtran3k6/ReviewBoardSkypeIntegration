@@ -23,29 +23,28 @@ from reviewboard.reviews.signals import (review_request_closed,
                                          reply_published)
 from reviewboard.site.urlresolvers import local_site_reverse
 
-from rbintegrations.slack.forms import SlackIntegrationConfigForm
+from rbintegrations.skype.forms import SkypeIntegrationConfigForm
 
 
-class SlackIntegration(Integration):
-    """Integrates Review Board with Slack.
+class SkypeIntegration(Integration):
+    """Integrates Review Board with Skype.
 
-    This will handle updating Slack channels when review requests are posted,
+    This will handle updating Skype channels when review requests are posted,
     changed, or closed, and when there's new activity on the review request.
     """
 
-    name = 'Slack'
+    name = 'Skype'
     description = (
-        'Notifies channels in Slack when review requests are created, '
+        'Notifies channels in Skype when review requests are created, '
         'updated, and reviewed.'
     )
 
     default_settings = {
         'webhook_url': '',
-        'channel': '',
         'notify_username': 'Review Board',
     }
 
-    config_form_cls = SlackIntegrationConfigForm
+    config_form_cls = SkypeIntegrationConfigForm
 
     DEFAULT_COLOR = '#efcc96'
     ASSETS_BASE_URL = 'https://static.reviewboard.org/integration-assets/slack'
@@ -78,24 +77,23 @@ class SlackIntegration(Integration):
 
         Returns:
             dict:
-            The icons for Slack.
+            The icons for Skype.
         """
         from rbintegrations.extension import RBIntegrationsExtension
 
         extension = RBIntegrationsExtension.instance
 
         return {
-            '1x': extension.get_static_url('images/slack/icon.png'),
-            '2x': extension.get_static_url('images/slack/icon@2x.png'),
+            '1x': extension.get_static_url('images/skype/icon.png'),
+            '2x': extension.get_static_url('images/skype/icon@2x.png'),
         }
 
     def notify(self, title, title_link, fallback_text, local_site,
                review_request, event_name=None, fields={}, pre_text=None,
                body=None, color=None, thumb_url=None, image_url=None):
-        """Send a webhook notification to Slack.
+        """Send a webhook notification to Skype bot.
 
-        This will post the given message to any Slacks/channels configured to
-        receive it.
+        This will post the given message to given conversationId/channelId
 
         Args:
             title (unicode):
@@ -129,7 +127,7 @@ class SlackIntegration(Integration):
                 The body of the message.
 
             color (unicode, optional):
-                A Slack color string or RGB hex value for the message.
+                A Skyipe color string or RGB hex value for the message.
 
             thumb_url (unicode, optional):
                 URL of an image to show on the side of the message.
@@ -163,7 +161,7 @@ class SlackIntegration(Integration):
             'attachments': [attachment_payload],
         }
 
-        # Send a notification to any configured Slack channels.
+        # Send a notification to any configured Skype conversation.
         for config in self.get_configs(local_site):
             if not config.match_conditions(form_cls=self.config_form_cls,
                                            review_request=review_request):
@@ -173,29 +171,23 @@ class SlackIntegration(Integration):
                 'username': config.get('notify_username'),
             }, **common_payload)
 
-            channel = config.get('channel')
-
-            if channel:
-                payload['channel'] = channel
-
             webhook_url = config.get('webhook_url')
 
-            logging.debug('Sending Slack notification for event "%s", '
-                          'review_request ID %d to channel "%s", '
-                          'webhook URL %s',
-                          event_name, review_request.pk, channel, webhook_url)
-
+            logging.debug('Sending Skype notification for event "%s", '
+                          'review_request ID %d to webhook URL %s',
+                          event_name, review_request.pk, webhook_url)
+        
             try:
                 urlopen(Request(webhook_url, json.dumps(payload)))
             except Exception as e:
-                logging.error('Failed to send notification to Slack: %s',
+                logging.error('Failed to send notification to Skype: %s',
                               e, exc_info=True)
 
     def notify_review_or_reply(self, user, review, pre_text, fallback_text,
                                event_name, first_comment=None, **kwargs):
-        """Notify Slack for any new posted reviews or replies.
+        """Notify Skype for any new posted reviews or replies.
 
-        This performs the common work of notifying configured Slack channels
+        This performs the common work of notifying configured Skype conversation
         when there's a review or a reply.
 
         Args:
@@ -262,9 +254,9 @@ class SlackIntegration(Integration):
 
     def notify_review_request(self, review_request, fallback_text, event_name,
                               **kwargs):
-        """Notify Slack for a review request update.
+        """Notify Skype for a review request update.
 
-        This performs the common work of notifying configured Slack channels
+        This performs the common work of notifying configured Skype channels
         when there's a new review request or update to a review request.
 
         Args:
@@ -294,10 +286,10 @@ class SlackIntegration(Integration):
                     **kwargs)
 
     def format_link(self, path, text):
-        """Format the given URL and text to be shown in a Slack message.
+        """Format the given URL and text to be shown in a Skype message.
 
         This will combine together the parts of the URL (method, domain, path)
-        and format it using Slack's URL syntax.
+        and format it using Skype's URL syntax.
 
         Args:
             path (unicode):
@@ -308,15 +300,10 @@ class SlackIntegration(Integration):
 
         Returns:
             unicode:
-            The link for use in Slack.
+            The link for use in Skype.
         """
-        # Slack only wants these three entities replaced, rather than
-        # all the entities that Django's escape() would attempt to replace.
-        text = text.replace('&', '&amp;')
-        text = text.replace('<', '&lt;')
-        text = text.replace('>', '&gt;')
 
-        return '<%s|%s>' % (build_server_url(path), text)
+        return '[%s](%s)' % (text, build_server_url(path))
 
     def get_user_text_url(self, user, local_site):
         """Return the URL to a user page.
@@ -340,7 +327,7 @@ class SlackIntegration(Integration):
             kwargs={'username': user.username})
 
     def get_user_text_link(self, user, local_site):
-        """Return the Slack-formatted link to a user page.
+        """Return the Skype-formatted link to a user page.
 
         Args:
             user (django.contrib.auth.models.User):
@@ -356,6 +343,7 @@ class SlackIntegration(Integration):
         return self.format_link(self.get_user_text_url(user, local_site),
                                 user.get_full_name() or user.username)
 
+
     def get_review_request_title(self, review_request):
         """Return the title for a review request message.
 
@@ -370,7 +358,7 @@ class SlackIntegration(Integration):
         return '#%s: %s' % (review_request.display_id, review_request.summary)
 
     def get_review_request_text_link(self, review_request):
-        """Return the Slack-formatted link to a review request.
+        """Return the Skype-formatted link to a review request.
 
         Args:
             review_request (reviewboard.reviews.models.ReviewRequest):
@@ -396,7 +384,7 @@ class SlackIntegration(Integration):
                                   description=None, **kwargs):
         """Handler for when review requests are closed.
 
-        This will send a notification to any configured Slack channels when
+        This will send a notification to any configured Skype conversation when
         a review request is closed.
 
         Args:
@@ -428,7 +416,7 @@ class SlackIntegration(Integration):
             fallback_text = 'Closed as completed by %s' % \
                 user_displayname(user)
         else:
-            logging.error('Slack: Tried to notify on review_request_closed '
+            logging.error('Skype: Tried to notify on review_request_closed '
                           'for review request pk=%d with unknown close type '
                           '"%s"',
                           review_request.pk, type)
@@ -448,7 +436,7 @@ class SlackIntegration(Integration):
                                      **kwargs):
         """Handler for when review requests are published.
 
-        This will send a notification to any configured Slack channels when
+        This will send a notification to any configured Skype conversation when
         a review request is published.
 
         Args:
@@ -520,7 +508,7 @@ class SlackIntegration(Integration):
             })
 
         # See if there are any new interesting file attachments to show.
-        # These will only show up if the file is accessible to Slack.
+        # These will only show up if the file is accessible to Skype.
         attachment = None
 
         if changedesc:
@@ -581,7 +569,7 @@ class SlackIntegration(Integration):
     def _on_review_request_reopened(self, user, review_request, **kwargs):
         """Handler for when review requests are reopened.
 
-        This will send a notification to any configured Slack channels when
+        This will send a notification to any configured Skype conversation when
         a review request is reopened.
 
         Args:
@@ -611,7 +599,7 @@ class SlackIntegration(Integration):
     def _on_review_published(self, user, review, **kwargs):
         """Handler for when a review is published.
 
-        This will send a notification to any configured Slack channels when
+        This will send a notification to any configured Skype conversation when
         a review is published.
 
         Args:
@@ -693,7 +681,7 @@ class SlackIntegration(Integration):
     def _on_reply_published(self, user, reply, **kwargs):
         """Handler for when a reply to a review is published.
 
-        This will send a notification to any configured Slack channels when
+        This will send a notification to any configured Skype conversation when
         a reply to a review is published.
 
         Args:
